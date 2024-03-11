@@ -7,6 +7,7 @@ import time
 from collections import OrderedDict
 from typing import Any, Callable, Generator
 
+from prawcore.exceptions import BadRequest
 from ..util import _deprecate_args
 
 
@@ -147,7 +148,13 @@ def stream_generator(
             without_before_counter = (without_before_counter + 1) % 30
         if not exclude_before:
             function_kwargs["params"] = {"before": before_attribute}
-        for item in reversed(list(function(limit=limit, **function_kwargs))):
+        try:
+           items = reversed(list(function(limit=limit, **function_kwargs)))
+        except GeneratorExit:
+            return
+        except BadRequest:
+            items = reversed(list(function(limit=100)))
+        for item in items:
             attribute = getattr(item, attribute_name)
             if attribute in seen_attributes:
                 continue
